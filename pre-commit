@@ -2,22 +2,25 @@
 set -euo pipefail
 
 GIT_ROOT_DIR="$(git rev-parse --show-toplevel)"
-cd $GIT_ROOT_DIR
+cd "$GIT_ROOT_DIR"
 
 process_go() {
-  ## this will retrieve all of the .go files that have been
-  ## changed since the last commit
+  ## we only want to process Go files that have been staged
   STAGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACM -- '*.go')
   [[ $STAGED_GO_FILES == "" ]] && return 0
+
+  ## ensure modules are not missing and that they are up-to-date
+  go mod tidy
 
   ## run the unit tests
   go test -coverprofile=coverage.out -covermode=set "$GIT_ROOT_DIR"/...
   go tool cover -func=coverage.out
 
-  ## we can check to see if this is empty
-  ## otherwise we can do stuff with these changed go files
   if [[ $STAGED_GO_FILES != "" ]];
   then
+
+    ## lint
+    which golangci-lint || go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
     golangci-lint run \
       --new \
       --enable-all \
@@ -34,38 +37,40 @@ process_go() {
       "$GIT_ROOT_DIR"/...
 
     for file in $STAGED_GO_FILES; do
-        ## format and lint the changed files
-        go fmt $file
-        go vet -c=5 $file
-        goimports -e -w $file
-        which golangci-lint || go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-                                                                                                                                                                                                                                                                                                                                                                     
+        ## format and fix imports
+        go fmt "$file"
+        go vet -c=5 "$file"
+        which goimports || go get golang.org/x/tools/cmd/goimports
+        goimports -e -w "$file"
+
         ## add any potential changes from our formatting to the commit
-        git add $file
+        git add "$file"
     done
+
+    ## verify dependencies
+    go mod verify
   fi
 
 }
 
 process_terraform() {
-  ## this will retrieve all of the .go files that have been
-  ## changed since the last commit
+  ## we only want to process Terraform files that have been staged
   STAGED_TF_FILES=$(git diff --cached --name-only --diff-filter=ACM -- '*.tf')
   [[ $STAGED_TF_FILES == "" ]] && return 0
 
-  terraform fmt -recursive
-
-  ## we can check to see if this is empty
-  ## otherwise we can do stuff with these changed go files
   if [[ $STAGED_TF_FILES != "" ]];
   then
     for file in $STAGED_TF_FILES; do
-        fileDir=$(dirname $GIT_ROOT_DIR/$file)
-        terraform -chdir=$fileDir init
-        terraform -chdir=$fileDir validate
+        ## format
+        terraform fmt "$file"
+
+        ## validate all files
+        fileDir=$(dirname "$GIT_ROOT_DIR"/"$file")
+        terraform -chdir="$fileDir" init
+        terraform -chdir="$fileDir" validate
 
         ## add any potential changes from our formatting to the commit
-        git add $file
+        git add "$file"
     done
   fi
 }
