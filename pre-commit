@@ -50,7 +50,6 @@ process_go() {
     ## verify dependencies
     go mod verify
   fi
-
 }
 
 process_terraform() {
