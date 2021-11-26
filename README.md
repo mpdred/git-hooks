@@ -1,4 +1,5 @@
 # git-hooks
+![tag](https://img.shields.io/github/v/tag/mpdred/git-hooks) ![last commit](https://img.shields.io/github/last-commit/mpdred/git-hooks)
 
 # define environment variables
 ```shell
