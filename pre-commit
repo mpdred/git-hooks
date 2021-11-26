@@ -20,7 +20,7 @@ process_go() {
   then
 
     ## lint
-    go vet -c=5
+    go vet -c=5 ./...
     which golangci-lint || go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
     golangci-lint run \
       --new \
