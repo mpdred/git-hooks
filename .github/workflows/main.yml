@@ -1,0 +1,25 @@
+name: main
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'pre-commit'
+      - '.github/workflows/main.yml'
+
+jobs:
+
+  version:
+    runs-on: ubuntu-latest
+    container: mpdred/semantic-tagger:latest
+    steps:
+
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set the version number
+        run: |
+          git config --global user.email "ci@redstonepointers.com"
+          git config --global user.name "ci"
+          semtag -increment=auto -git-tag -push
